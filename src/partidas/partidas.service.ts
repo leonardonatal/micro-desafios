@@ -19,6 +19,9 @@ export class PartidasService {
   private clientDesafios =
     this.clientProxySmartRanking.getClientProxyDesafiosInstance();
 
+  private clientRankings =
+    this.clientProxySmartRanking.getClientProxyRankingnsInstance();
+
   async criarPartida(partida: Partida): Promise<Partida> {
     try {
       /*
@@ -48,10 +51,17 @@ export class PartidasService {
                 Acionamos o tópico 'atualizar-desafio-partida' que será
                 responsável por atualizar o desafio.
             */
-      return await lastValueFrom(
+      await lastValueFrom(
         this.clientDesafios.emit('atualizar-desafio-partida', {
           idPartida: idPartida,
           desafio: desafio,
+        }),
+      );
+
+      return await lastValueFrom(
+        this.clientRankings.emit('processar-partida', {
+          idPartida: idPartida,
+          partida: partida,
         }),
       );
     } catch (error) {
