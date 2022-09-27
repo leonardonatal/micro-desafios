@@ -1,3 +1,4 @@
+import { ClientProxySmartRanking } from './../proxyrmq/client-proxy.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Desafio } from './interfaces/desafio.interface';
@@ -5,14 +6,19 @@ import { Model } from 'mongoose';
 import { DesafioStatus } from './desafio-status.enum';
 import { RpcException } from '@nestjs/microservices';
 import * as momentTimezone from 'moment-timezone';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class DesafiosService {
   constructor(
     @InjectModel('Desafio') private readonly desafioModel: Model<Desafio>,
+    private clientProxySmartRanking: ClientProxySmartRanking,
   ) {}
 
   private readonly logger = new Logger(DesafiosService.name);
+
+  private clientNotificacoes =
+    this.clientProxySmartRanking.getClientProxyNotificacoesInstance();
 
   async criarDesafio(desafio: Desafio): Promise<Desafio> {
     try {
@@ -24,7 +30,11 @@ export class DesafiosService {
             */
       desafioCriado.status = DesafioStatus.PENDENTE;
       this.logger.log(`desafioCriado: ${JSON.stringify(desafioCriado)}`);
-      return await desafioCriado.save();
+      await desafioCriado.save();
+
+      return await lastValueFrom(
+        this.clientNotificacoes.emit('notificacao-novo-desafio', desafio),
+      );
     } catch (error) {
       this.logger.error(`error: ${JSON.stringify(error.message)}`);
       throw new RpcException(error.message);
